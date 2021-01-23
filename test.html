@@ -1,32 +1,37 @@
-function onLine(data) {
-  // CSV data is received here
+<html>
+ <head>
+ </head>
+ <body>
+  <script src="https://www.espruino.com/js/uart.js"></script>
+  <script>
+// Output debug info about received data to the console
+UART.debug=3;
+
+// Save the CSV file to disk
+function saveFile(csvText, fileName) {
+  var saver = document.createElement("a");
+  var blob = new Blob([csvText], {type : 'text/csv'});
+  var blobURL = saver.href = URL.createObjectURL(blob),
+      body = document.body;
+  saver.download = fileName;
+  body.appendChild(saver);
+  saver.dispatchEvent(new MouseEvent("click"));
+  body.removeChild(saver);
+  URL.revokeObjectURL(blobURL);
 }
 
-var connection;
-button.addEventListener("click", function() {
-  if (connection) {
-    connection.close();
-    connection = undefined;
-  }
-  Puck.connect(function(c) {
-    if (!c) {
-      alert("Couldn't connect!");
-      return;
-    }
-    connection = c;
-    // Handle the data we get back, and call 'onLine'
-    // whenever we get a line
-    var buf = "";
-    connection.on("data", function(d) {
-      buf += d;
-      var i = buf.indexOf("\n");
-      while (i>=0) {
-        onLine(buf.substr(0,i));
-        buf = buf.substr(i+1);
-        i = buf.indexOf("\n");
-      }
-    });
-    // Request data from Puck.js
-    connection.write("\x10getData()\n");
+// Actually get the data from Espruino
+function getData() {
+  UART.write('\x03\x10getData()\n', function(data) {
+    console.log("Received",JSON.stringify(data));
+    // If getData uses console.log rather than Bluetooth.println,
+    // it'll cause a prompt to be written at the end of the output
+    // we detect that here are remove it.
+    if (data.endsWith(">")) data = data.slice(0,-1);
+    saveFile(data,"info.csv");
   });
-});
+}
+  </script>
+  <button onclick="getData()">Download Data</button>
+ </body>
+</html>
